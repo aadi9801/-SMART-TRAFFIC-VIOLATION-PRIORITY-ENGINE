@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Traffic AI Command Center</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            background: #0b1120;
+            color: white;
+        }
+
+        #map {
+            height: 350px;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <!-- NAVBAR -->
+    <nav class="bg-black/70 backdrop-blur border-b border-gray-800 fixed w-full z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-traffic-light text-red-500 text-xl"></i>
+                <span class="font-bold text-lg">Smart Traffic AI</span>
+            </div>
+            <div class="space-x-6">
+                <a href="/" class="hover:text-red-400">Home</a>
+                <a href="/dashboard.html" class="text-red-400 font-semibold">Dashboard</a>
+                <a href="/contact.html" class="hover:text-red-400">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-24 pb-16 max-w-7xl mx-auto px-6">
+
+        <!-- HEADER -->
+        <div class="mb-10">
+            <h1 class="text-4xl font-bold mb-2 flex items-center gap-3">
+                <i class="fas fa-tachometer-alt text-blue-400"></i>
+                Smart City AI Command Center
+            </h1>
+            <p class="text-gray-400">Real-time traffic intelligence & emergency response platform</p>
+        </div>
+
+        <!-- ALERT PANEL -->
+        <div id="alertBox" class="hidden bg-red-600/20 border border-red-600 rounded-xl p-6 mb-10">
+            <h3 class="text-lg font-bold flex items-center gap-2 text-red-400">
+                <i class="fas fa-siren"></i> Emergency Alert
+            </h3>
+            <p id="alertText" class="mt-2"></p>
+            <p id="alertRisk" class="text-sm mt-1"></p>
+        </div>
+
+        <!-- KPI ROW -->
+        <div class="grid md:grid-cols-4 gap-6 mb-10">
+            <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                <div class="text-3xl font-bold text-red-500" id="criticalCount">12</div>
+                <div class="text-sm text-gray-400">Critical Alerts</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                <div class="text-3xl font-bold text-orange-400">47</div>
+                <div class="text-sm text-gray-400">Active Violations</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                <div class="text-3xl font-bold text-green-400">7.2 min</div>
+                <div class="text-sm text-gray-400">Avg Response</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                <div class="text-3xl font-bold text-blue-400">99.97%</div>
+                <div class="text-sm text-gray-400">System Uptime</div>
+            </div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="grid lg:grid-cols-3 gap-8">
+
+            <!-- LEFT -->
+            <div class="lg:col-span-2 space-y-8">
+
+                <!-- MAP -->
+                <div>
+                    <h2 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <i class="fas fa-map text-blue-400"></i> City Live Map
+                    </h2>
+                    <div id="map"></div>
+                </div>
+
+                <!-- CCTV -->
+                <div>
+                    <h2 class="text-xl font-bold mb-4 flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <i class="fas fa-video text-blue-400"></i> Live CCTV Feeds
+                            <span id="videoCount" class="text-sm text-gray-400 font-normal"></span>
+                        </span>
+                        <a href="http://localhost:8501"
+                            class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/50"
+                            target="_blank">
+                            <i class="fas fa-external-link-alt mr-1"></i> Open Skillmap
+                        </a>
+                    </h2>
+
+                    <!-- DYNAMIC VIDEO GRID -->
+                    <div id="videoGrid" class="grid grid-cols-2 gap-4">
+                        <!-- Loading indicator -->
+                        <div class="col-span-2 flex items-center justify-center py-12">
+                            <div class="text-center">
+                                <i class="fas fa-spinner fa-spin text-4xl text-blue-400 mb-3"></i>
+                                <p class="text-gray-400">Loading video feeds...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT -->
+            <div class="space-y-8">
+
+                <!-- LEADERBOARD -->
+                <div>
+                    <h2 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <i class="fas fa-trophy text-yellow-400"></i> Danger Leaderboard
+                    </h2>
+                    <div id="leaderboard" class="space-y-3"></div>
+                </div>
+
+                <!-- CONTROL PANEL -->
+                <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                    <h3 class="font-bold mb-4 flex items-center gap-2">
+                        <i class="fas fa-sliders-h text-blue-400"></i> Command Controls
+                    </h3>
+                    <div class="space-y-3">
+                        <button onclick="triggerEmergency()" class="w-full bg-red-600 py-2 rounded">Trigger Emergency
+                            Mode</button>
+                        <button onclick="overrideSignals()" class="w-full bg-blue-600 py-2 rounded">Override
+                            Signals</button>
+                        <button onclick="dispatchPatrol()" class="w-full bg-green-600 py-2 rounded">Dispatch
+                            Patrol</button>
+                    </div>
+                </div>
+
+                <!-- AI ASSISTANT -->
+                <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                    <h3 class="font-bold mb-4 flex items-center gap-2">
+                        <i class="fas fa-robot text-purple-400"></i> AI Assistant
+                    </h3>
+                    <input id="aiInput" class="w-full bg-black border border-gray-700 rounded p-2 mb-2"
+                        placeholder="Ask traffic AI...">
+                    <div id="aiReply" class="text-sm text-green-400"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- CHARTS -->
+        <div class="grid md:grid-cols-2 gap-8 mt-12">
+
+            <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                <h3 class="font-bold mb-4">Risk Distribution</h3>
+                <canvas id="riskChart"></canvas>
+            </div>
+
+            <div class="bg-slate-900 p-6 rounded-xl border border-gray-700">
+                <h3 class="font-bold mb-4">Response Time Trend</h3>
+                <canvas id="responseChart"></canvas>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MAP -->
+    <script>
+        const map = L.map('map').setView([28.6139, 77.2090], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        const intersections = [
+            [28.6139, 77.2090, "Connaught Place"],
+            [28.5355, 77.3910, "Noida"],
+            [28.7041, 77.1025, "North Delhi"],
+            [28.4595, 77.0266, "Gurgaon"]
+        ];
+
+        intersections.forEach(i => {
+            L.marker([i[0], i[1]]).addTo(map).bindPopup(i[2]);
+        });
+
+        // INTERACTIVE PINNING SYSTEM
+        let pinnedMarker = null;
+        let pinnedLocation = null;
+
+        // Area-specific violation database
+        const areaViolations = {
+            "Connaught Place": [
+                { msg: "Ambulance blocked near Janpath", risk: 999, type: "critical" },
+                { msg: "Wrong-side SUV at Barakhamba Road", risk: 92, type: "high" },
+                { msg: "Overspeeding bike near Palika Bazaar", risk: 78, type: "medium" },
+                { msg: "Illegal parking at Outer Circle", risk: 65, type: "medium" },
+                { msg: "Red light violation at Rajiv Chowk", risk: 88, type: "high" }
+            ],
+            "Noida": [
+                { msg: "Heavy congestion at Sector 18 Metro", risk: 85, type: "high" },
+                { msg: "Triple riding on DND Flyway", risk: 72, type: "medium" },
+                { msg: "Wrong lane usage near Film City", risk: 68, type: "medium" },
+                { msg: "Overspeeding truck on Noida-Greater Noida Expressway", risk: 95, type: "critical" },
+                { msg: "Helmet violation at Sector 62", risk: 45, type: "low" }
+            ],
+            "North Delhi": [
+                { msg: "School zone speeding near Kashmere Gate", risk: 999, type: "critical" },
+                { msg: "Auto-rickshaw wrong side at ISBT", risk: 76, type: "medium" },
+                { msg: "Illegal U-turn at Majnu Ka Tilla", risk: 61, type: "medium" },
+                { msg: "Heavy vehicle in restricted zone", risk: 83, type: "high" },
+                { msg: "Signal jumping at Mukarba Chowk", risk: 89, type: "high" }
+            ],
+            "Gurgaon": [
+                { msg: "Emergency vehicle blocked at Cyber Hub", risk: 999, type: "critical" },
+                { msg: "Overspeeding luxury car on Golf Course Road", risk: 94, type: "critical" },
+                { msg: "Illegal lane change near IFFCO Chowk", risk: 71, type: "medium" },
+                { msg: "Drunk driving detected at MG Road", risk: 999, type: "critical" },
+                { msg: "Pedestrian safety violation near Galleria", risk: 55, type: "low" }
+            ],
+            "Default": [
+                { msg: "Traffic rule violation detected", risk: 75, type: "medium" },
+                { msg: "Speed limit exceeded", risk: 80, type: "high" },
+                { msg: "Improper lane usage", risk: 60, type: "medium" },
+                { msg: "Parking violation", risk: 50, type: "low" }
+            ]
+        };
+
+        // Map click handler for pinning locations
+        map.on('click', function (e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            // Remove previous pin if exists
+            if (pinnedMarker) {
+                map.removeLayer(pinnedMarker);
+            }
+
+            // Create custom pin icon
+            const pinIcon = L.divIcon({
+                className: 'custom-pin',
+                html: '<div style="font-size: 30px; color: #ef4444;">📍</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+
+            // Add new pin marker
+            pinnedMarker = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+
+            // Determine nearest area
+            const nearestArea = findNearestArea(lat, lng);
+            pinnedLocation = nearestArea;
+
+            // Update pin popup
+            pinnedMarker.bindPopup(`
+                <div style="text-align: center;">
+                    <strong>📍 Monitoring Zone</strong><br>
+                    <span style="color: #3b82f6;">${nearestArea}</span><br>
+                    <small>Click outside to clear</small>
+                </div>
+            `).openPopup();
+
+            // Update leaderboard and alerts for this area
+            updateAreaAlerts(nearestArea);
+        });
+
+        function findNearestArea(lat, lng) {
+            let minDistance = Infinity;
+            let nearest = "Default";
+
+            intersections.forEach(i => {
+                const distance = Math.sqrt(
+                    Math.pow(lat - i[0], 2) + Math.pow(lng - i[1], 2)
+                );
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = i[2];
+                }
+            });
+
+            return nearest;
+        }
+
+        function updateAreaAlerts(areaName) {
+            const violations = areaViolations[areaName] || areaViolations["Default"];
+            const leaderboard = document.getElementById("leaderboard");
+            const alertBox = document.getElementById("alertBox");
+            const alertText = document.getElementById("alertText");
+            const alertRisk = document.getElementById("alertRisk");
+
+            // Update alert box with highest risk violation
+            const criticalViolation = violations.find(v => v.type === "critical") || violations[0];
+            alertBox.classList.remove("hidden");
+            alertText.innerText = `${criticalViolation.msg} - ${areaName}`;
+            alertRisk.innerHTML = `
+                <span class="inline-flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Risk Score: ${criticalViolation.risk} | 
+                    <i class="fas fa-map-marker-alt"></i>
+                    Area: ${areaName}
+                </span>
+            `;
+
+            // Update leaderboard with area-specific violations
+            leaderboard.innerHTML = '';
+            violations.forEach((violation, index) => {
+                const colorClass = violation.type === 'critical' ? 'red' :
+                    violation.type === 'high' ? 'orange' :
+                        violation.type === 'medium' ? 'yellow' : 'blue';
+
+                const row = document.createElement("div");
+                row.className = `bg-${colorClass}-600/10 border border-${colorClass}-600/30 p-3 rounded`;
+                row.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="text-sm">${violation.msg}</div>
+                            <div class="text-xs text-gray-400 mt-1">
+                                <i class="fas fa-map-marker-alt"></i> ${areaName}
+                            </div>
+                        </div>
+                        <div class="text-sm text-${colorClass}-400 font-bold ml-2">
+                            ${violation.risk}
+                        </div>
+                    </div>
+                `;
+                leaderboard.appendChild(row);
+            });
+
+            // Show notification
+            showPinNotification(areaName, violations.length);
+        }
+
+        function showPinNotification(area, count) {
+            // Create temporary notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-20 right-6 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce';
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-map-pin"></i>
+                    <div>
+                        <div class="font-bold">Area Pinned: ${area}</div>
+                        <div class="text-sm">${count} violations detected</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.5s';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+    </script>
+
+    <!-- PATROL SYSTEM -->
+    <script>
+        let patrolMarker;
+        let patrolPath = [
+            [28.6139, 77.2090],
+            [28.6200, 77.2150],
+            [28.6300, 77.2200],
+            [28.6400, 77.2250]
+        ];
+        let patrolIndex = 0;
+
+        function dispatchPatrol() {
+            if (patrolMarker) return alert("Patrol already active.");
+
+            patrolMarker = L.marker(patrolPath[0]).addTo(map).bindPopup("🚓 Patrol Unit Alpha");
+            patrolMarker.openPopup();
+
+            setInterval(() => {
+                patrolIndex++;
+                if (patrolIndex >= patrolPath.length) return;
+                patrolMarker.setLatLng(patrolPath[patrolIndex]);
+            }, 3000);
+        }
+
+        function triggerEmergency() {
+            alert("🚨 Emergency Mode Activated. Green Corridor Enabled.");
+        }
+
+        function overrideSignals() {
+            alert("🚦 Signal Override Activated for Emergency Corridor.");
+        }
+    </script>
+
+    <!-- AI ASSISTANT -->
+    <script>
+        const aiInput = document.getElementById("aiInput");
+        const aiReply = document.getElementById("aiReply");
+
+        aiInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                const cmd = aiInput.value.toLowerCase();
+                aiReply.innerText = aiResponse(cmd);
+                aiInput.value = "";
+            }
+        });
+
+        function aiResponse(cmd) {
+            if (cmd.includes("risk")) return "High risk zones: Connaught Place, NH-48, AIIMS.";
+            if (cmd.includes("ambulance")) return "Emergency corridor activated.";
+            if (cmd.includes("patrol")) return "Nearest patrol dispatched.";
+            if (cmd.includes("status")) return "All systems operational.";
+            if (cmd.includes("traffic")) return "Heavy congestion detected on Ring Road.";
+            return "Command received. AI monitoring.";
+        }
+    </script>
+
+    <!-- ALERT ENGINE -->
+    <script>
+        const events = [
+            { msg: "Ambulance blocked near Hospital Zone", risk: 999 },
+            { msg: "Wrong-side SUV at Connaught Place", risk: 92 },
+            { msg: "Overspeeding truck at NH-48", risk: 78 },
+            { msg: "Illegal U-turn at Cyber Hub", risk: 65 }
+        ];
+
+        const leaderboard = document.getElementById("leaderboard");
+        const alertBox = document.getElementById("alertBox");
+        const alertText = document.getElementById("alertText");
+        const alertRisk = document.getElementById("alertRisk");
+
+        setInterval(() => {
+            const e = events[Math.floor(Math.random() * events.length)];
+            alertBox.classList.remove("hidden");
+            alertText.innerText = e.msg;
+            alertRisk.innerText = "Risk Score: " + e.risk;
+
+            const row = document.createElement("div");
+            row.className = "bg-red-600/10 border border-red-600/30 p-3 rounded";
+            row.innerHTML = `<div>${e.msg}</div><div class="text-sm text-red-400">Risk ${e.risk}</div>`;
+            leaderboard.prepend(row);
+
+            if (leaderboard.children.length > 5) {
+                leaderboard.removeChild(leaderboard.lastChild);
+            }
+        }, 4000);
+    </script>
+
+    <!-- VIDEO CLICK HANDLER -->
+    <script>
+        function openSkillmapWithVideo(videoName) {
+            // Redirect to Skillmap with the video parameter
+            const videoParam = encodeURIComponent(videoName);
+            window.open(`http://localhost:8501/?video=${videoParam}`, '_blank');
+        }
+    </script>
+
+    <!-- DYNAMIC VIDEO LOADER -->
+    <script>
+        let currentVideos = [];
+        const videoGrid = document.getElementById('videoGrid');
+        const videoCount = document.getElementById('videoCount');
+
+        // Camera labels for different positions
+        const cameraLabels = [
+            'Main Traffic',
+            'Junction View',
+            'Highway Monitor',
+            'Intersection',
+            'City Center',
+            'Ring Road',
+            'Metro Station',
+            'Bus Terminal'
+        ];
+
+        async function loadVideos() {
+            try {
+                // Fetch the list of videos from the skillmap assets directory
+                const response = await fetch('http://localhost:8002/assets/');
+                const html = await response.text();
+
+                // Parse the directory listing to extract video files
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = doc.querySelectorAll('a');
+
+                const videos = [];
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && (href.endsWith('.mp4') || href.endsWith('.webm') || href.endsWith('.avi'))) {
+                        videos.push(decodeURIComponent(href));
+                    }
+                });
+
+                // Check if videos have changed
+                const videosChanged = JSON.stringify(videos.sort()) !== JSON.stringify(currentVideos.sort());
+
+                if (videosChanged || videoGrid.children.length === 1) {
+                    currentVideos = videos;
+                    renderVideos(videos);
+                }
+            } catch (error) {
+                console.error('Error loading videos:', error);
+                renderFallbackVideos();
+            }
+        }
+
+        function renderVideos(videos) {
+            if (videos.length === 0) {
+                videoGrid.innerHTML = `
+                    <div class="col-span-2 flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <i class="fas fa-video-slash text-4xl text-gray-600 mb-3"></i>
+                            <p class="text-gray-400">No videos found. Upload videos to Skillmap to see them here.</p>
+                        </div>
+                    </div>
+                `;
+                videoCount.textContent = '(0 feeds)';
+                return;
+            }
+
+            videoCount.textContent = `(${videos.length} feed${videos.length > 1 ? 's' : ''})`;
+
+            let html = '';
+            videos.forEach((video, index) => {
+                const camNumber = (index + 1).toString().padStart(2, '0');
+                const camLabel = cameraLabels[index % cameraLabels.length];
+                const videoName = video.split('/').pop();
+                const videoPath = `http://localhost:8002/assets/${encodeURIComponent(videoName)}`;
+
+                html += `
+                    <div class="relative bg-slate-900 rounded-xl border border-gray-700 overflow-hidden aspect-video cursor-pointer hover:border-blue-500 transition-all group"
+                         onclick="openSkillmapWithVideo('${videoName.replace(/'/g, "\\'")}')">
+                        <video autoplay loop muted class="w-full h-full object-cover">
+                            <source src="${videoPath}" type="video/mp4">
+                        </video>
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div class="text-center">
+                                <i class="fas fa-play-circle text-5xl text-white mb-2"></i>
+                                <p class="text-sm font-semibold">Click for Detailed Analysis</p>
+                                <p class="text-xs text-gray-300 mt-1">Opens in Skillmap</p>
+                            </div>
+                        </div>
+                        <div class="absolute top-2 left-2 bg-black/70 backdrop-blur px-2 py-1 rounded text-xs flex items-center gap-1">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            CAM-${camNumber} | ${camLabel}
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur px-2 py-1 rounded text-xs truncate">
+                            ${videoName}
+                        </div>
+                    </div>
+                `;
+            });
+
+            videoGrid.innerHTML = html;
+        }
+
+        function renderFallbackVideos() {
+            // Fallback to known videos if fetch fails
+            const fallbackVideos = [
+                'traffic.mp4',
+                'traffic (2).mp4',
+                'traffic 3.mp4',
+                'traffic4.mp4'
+            ];
+            renderVideos(fallbackVideos);
+        }
+
+        // Initial load
+        loadVideos();
+
+        // Auto-refresh every 10 seconds to detect new uploads
+        setInterval(loadVideos, 10000);
+    </script>
+
+    <!-- CHARTS -->
+    <script>
+        new Chart(document.getElementById('riskChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [12, 18, 10, 7],
+                    backgroundColor: ['#ef4444', '#f97316', '#facc15', '#22c55e']
+                }]
+            }
+        });
+
+        new Chart(document.getElementById('responseChart'), {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Avg Response (min)',
+                    data: [12, 10, 9, 8, 7.8, 7.4, 7.2],
+                    borderColor: '#38bdf8',
+                    tension: 0.4
+                }]
+            }
+        });
+    </script>
+
+</body>
+
+</html>
